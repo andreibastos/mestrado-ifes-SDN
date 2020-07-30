@@ -1,14 +1,26 @@
-# coding: utf-8+-
+#!./venv/bin python
+# -*- coding: utf-8 -*-
+
+"""
+Esse é o arquivo principal que dá inicio a todo processo
+"""
 import argparse
+from topologies.fattree import FatTreeTopo
+from mininet.net import Mininet
+from mininet.cli import CLI
+from mininet.util import dumpNodeConnections
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--topology", help="Topologia de emtrada, pode ser: fattree, bcube ou generic", choices=['fattree', 'bcube', 'generic'], default='fattree')
-parser.add_argument("-k", "--ports", help="número de portas do switch", type=int, default=4)
+parser.add_argument("-k", "--ports", help="número de portas do switch", dest="k", type=int, default=4)
 parser.add_argument("--file", help="Arquivo de entrada quando topologia é generic")
 parser.add_argument("-n", help="número de portas do switch", type=int, default=4)
 args = parser.parse_args()
-
-if args.topology == 'fattree':
-    pass
+print(args)
+k = args.k
+n = args.n
+if args.topology == 'fattree':    
+    topo = FatTreeTopo(k=k)
 if args.topology == 'bcube':
     pass
 if args.topology == 'generic':
@@ -16,3 +28,11 @@ if args.topology == 'generic':
         print('você deve informar o arquivo')
         exit(1)
 
+net = Mininet(topo, controller=None)
+net.start()
+print "Dumping host connections"
+dumpNodeConnections(net.hosts)
+net.stop()
+
+__author__ = 'Andrei Bastos'
+__email__ = 'andreibastos@outlook.com'
