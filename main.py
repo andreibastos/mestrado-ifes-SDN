@@ -6,8 +6,10 @@ Esse é o arquivo principal que dá inicio a todo processo
 """
 import argparse
 from topologies.fattree import FatTreeTopo
+from topologies.bcube import BCubeTopo
 from mininet.net import Mininet
 from mininet.cli import CLI
+from mininet.node import RemoteController
 from mininet.util import dumpNodeConnections
 
 parser = argparse.ArgumentParser()
@@ -22,14 +24,15 @@ n = args.n
 if args.topology == 'fattree':    
     topo = FatTreeTopo(k=k)
 if args.topology == 'bcube':
-    pass
+    topo = BCubeTopo(k, n)
 if args.topology == 'generic':
     if not args.file:
         print('você deve informar o arquivo')
         exit(1)
 
-net = Mininet(topo, controller=None)
+net = Mininet(topo, controller=RemoteController)
 net.start()
+net.pingAll()
 print "Dumping host connections"
 dumpNodeConnections(net.hosts)
 net.stop()

@@ -1,2 +1,3 @@
 networkx==2.2
 git+https://github.com/mininet/mininet.git@2.2.2#eggs=mininet
+ryu==3.22

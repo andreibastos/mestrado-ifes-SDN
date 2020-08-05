@@ -5,6 +5,7 @@
 Esse arquivo contém a geração da topologia bcube,
 código veio de https://github.com/kuailedubage/DataCenterTopo/blob/master/DCTopo.py
 """
+from mininet.topo import Topo
 
 class BCubeTopo(Topo):
     """
@@ -57,6 +58,8 @@ class BCubeTopo(Topo):
                 nodeslist = self.nodes()
                 sid = sid + 1
                 for v in hosts:
+                    self.addLink(sw, nodeslist[v])
+
 
 __author__ = 'Andrei Bastos'
 __email__ = 'andreibastos@outlook.com'
