@@ -14,7 +14,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet, ethernet
 
 class Switch(app_manager.RyuApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+    # OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     mac_to_port = dict()
     def __init__(self, *args, **kwargs):
         super(Switch, self).__init__(*args, **kwargs)
@@ -22,12 +22,14 @@ class Switch(app_manager.RyuApp):
     ## eventos de conexões do switch
     @set_ev_cls(EventDP, CONFIG_DISPATCHER)
     def switch_connection(self, event):
+        id_switch = event.dp.id
+        self.mac_to_port[id_switch] = dict()
         ports = event.ports # obtem as portas do switch
         if (event.enter): # verifica se o estado é conectado
-            self.logger.info('\nswitch %s connected with %s ports', event.dp.id, len(ports))
-            for port in ports: # para cada porta
-                print("\t{} com mac: {}".format(port.name, port.hw_addr)) # exibe uma informação
+            self.logger.info('\nswitch %s connected with %s ports', event.dp.id, str(len(ports))+" ports: " + ", ".join([p.name for p in ports]))
+                # print("\t{} com mac: {}".format(port.name, port.hw_addr)) # exibe uma informação
         else:
+            self.mac_to_port[id_switch].clear()
             self.logger.info('switch %s disconnected', event.dp.id) # caso seja um evento de disconectado
     
     ## eventos de pacotes recebidos
@@ -39,19 +41,21 @@ class Switch(app_manager.RyuApp):
         ofp = dp.ofproto # obtem o protocolo daquele switch
         ofp_parser = dp.ofproto_parser # obtem o parser
 
+        sid = dp.id    
         pkt = packet.Packet(msg.data) # converte o dado da mensagem para um packet
         eth = pkt.get_protocols(ethernet.ethernet)[0] # obtem o os dados do protocolo ethernet
         src = eth.src # pega o mac de origem
         dst = eth.dst # pega o mas de destino
 
-        self.mac_to_port[src] = in_port # coloca no dicionário, a porta física de origem
+        self.mac_to_port[sid][src] = in_port # coloca no dicionário, a porta física de origem
         
-        out_port = self.mac_to_port.get(dst) # verifica se existe a porta física do mac de destino
+        out_port = self.mac_to_port.get(sid).get(dst) # verifica se existe a porta física do mac de destino
+        
+        self.logger.info('switch %s: from in_port=%s to out_port=%s', dp.id, in_port, 'FLOOD' if not out_port else out_port) # exibe informações do switch e da porta
+
         if not out_port: # caso não tenha,
             out_port = ofp.OFPP_FLOOD # a porta de saida será um FLOOD
-        
-        self.logger.info('switch %s: new msg from in_port=%s(%s) para out_port=%s(%s)', dp.id, in_port,src, out_port,dst) # exibe informações do switch e da porta
-        
+
         actions = [ofp_parser.OFPActionOutput(out_port)] # cria uma ação com portA de saida
         
         ## essa parte adiciona uma modificação na tabela de encaminhamento para evitar que pacotes vão até o controlador, reduz o tempo 
