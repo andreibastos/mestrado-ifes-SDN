@@ -20,7 +20,11 @@ pip install -r requeriments.txt
 ```
 
 ## Executando
-(considerando [ryu](https://ryu-sdn.org/) e [mininet](http://mininet.org/) instalados)
+considerando [mininet](http://mininet.org/) instalado
+
+
 ```
-python main.py
+sudo python main.py -t bcube -k 1 -n 4
+or
+sudo python main.py -t fattree -k 4 
 ```
