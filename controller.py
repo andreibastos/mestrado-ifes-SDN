@@ -27,6 +27,7 @@ class Switch(app_manager.RyuApp):
         ports = event.ports # obtem as portas do switch
         if (event.enter): # verifica se o estado é conectado
             self.logger.info('\nswitch %s connected with %s ports', event.dp.id, str(len(ports))+" ports: " + ", ".join([p.name for p in ports]))
+            print(self.mac_to_port)
                 # print("\t{} com mac: {}".format(port.name, port.hw_addr)) # exibe uma informação
         else:
             self.mac_to_port[id_switch].clear()
@@ -47,11 +48,19 @@ class Switch(app_manager.RyuApp):
         src = eth.src # pega o mac de origem
         dst = eth.dst # pega o mas de destino
 
+        if not self.mac_to_port.has_key(sid):
+            self.mac_to_port[sid] = dict()
+            print(self.mac_to_port)
+        
         self.mac_to_port[sid][src] = in_port # coloca no dicionário, a porta física de origem
         
-        out_port = self.mac_to_port.get(sid).get(dst) # verifica se existe a porta física do mac de destino
+        if dst is 'ff:ff:ff:ff:ff':
+            out_port = ofp.OFPP_FLOOD # a porta de saida será um FLOOD
+        else:
+            out_port = self.mac_to_port[sid].get(dst) # verifica se existe a porta física do mac de destino
         
-        self.logger.info('switch %s: from in_port=%s to out_port=%s', dp.id, in_port, 'FLOOD' if not out_port else out_port) # exibe informações do switch e da porta
+        self.logger.info('switch %s: from in_port=%s to out_port=%s', sid, in_port, 'FLOOD' if not out_port else out_port) # exibe informações do switch e da porta
+        
 
         if not out_port: # caso não tenha,
             out_port = ofp.OFPP_FLOOD # a porta de saida será um FLOOD
