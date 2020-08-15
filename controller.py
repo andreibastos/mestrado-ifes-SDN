@@ -14,7 +14,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.topology import event as evt
 from ryu.lib.packet import packet, ethernet
 from ryu.lib import dpid as dpid_lib
-from networkx import shortest_path
+import networkx as nx
 from ryu.controller import dpset
 from ryu.topology.api import get_switch, get_link
 
@@ -26,42 +26,38 @@ class Switch(app_manager.RyuApp):
     }
     nodes_pairs = list()
     switches = dict()
+    G = nx.Graph()
 
     def __init__(self, *args, **kwargs):
         super(Switch, self).__init__(*args, **kwargs)
         self.dpset = kwargs['dpset']
-        # self.switches = kwargs['switches']
-        # self.link = kwargs['link']
     
     ## eventos de conexões do switch
     @set_ev_cls(EventDP, CONFIG_DISPATCHER)
     def _event_switch_enter_handler(self, event):
         dpid = event.dp.id
-        self.switches.setdefault(dpid, {'dp': event.dp, 'ports': len(event.ports)})
+        self.switches.setdefault(dpid, {'dp': event.dp, dpid: dpid, 'ports': len(event.ports)})
         self.mac_to_port.setdefault(dpid, dict())
         ports = event.ports # obtem as portas do switch
         self.links = get_link(self)
-        self.nodes_pairs = list()
-        for link in self.links:
-            edge = sorted([link.src.dpid,link.dst.dpid])
-            if not edge in self.nodes_pairs:
-                self.nodes_pairs.append(edge)
-                
-        print sorted(self.nodes_pairs)
+
+
         if (event.enter): # verifica se o estado é conectado
-            # self.switches.append(dpid)
             self.logger.info('\nswitch %s connected with %s ports', dpid, str(len(ports)-1)+" ports: " + ", ".join([p.name for p in ports]))
-            # print ports
-            # for port in ports:
-            #     print(port.name, port.hw_addr,)
         else:
-            # if dpid in self.switches:
-                # self.switches.remove(dpid)
+            if dpid in self.switches:
+                self.switches.remove(dpid)
             self.mac_to_port[dpid].clear()
             self.logger.info('switch %s disconnected', dpid) # caso seja um evento de disconectado
-        # print(self.switches)
-        # print(self.link)
-        # print(self.dpset.get_all())
+            print(self.links)
+            
+        self.G.clear()
+        self.G.add_nodes_from(self.switches.keys())
+
+        for link in self.links:
+            edge = (link.src.dpid,link.dst.dpid)
+            self.G.add_edge(*edge)
+        print self.G.edges, self.G.nodes
     
     ## eventos de pacotes recebidos
     @set_ev_cls(EventOFPPacketIn, MAIN_DISPATCHER)
@@ -85,15 +81,12 @@ class Switch(app_manager.RyuApp):
         
         if dst is 'ff:ff:ff:ff:ff':
             out_port = ofproto.OFPP_FLOOD # a porta de saida será um FLOOD
+            pass
         else:
             out_port = self.mac_to_port[dpid].get(dst) # verifica se existe a porta física do mac de destino
         
         self.logger.info('switch %s: from in_port=%s:%s to out_port=%s:%s', dpid, in_port, src, 'FLOOD' if not out_port else out_port, dst) # exibe informações do switch e da porta
         
-        # print(self.mac_to_port)
-        # print(self.switches[dpid])
-        # raw_input()
-
         if not out_port: # caso não tenha,
             out_port = ofproto.OFPP_FLOOD # a porta de saida será um FLOOD
 
