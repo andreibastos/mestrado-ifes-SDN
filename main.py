@@ -26,22 +26,27 @@ args = parser.parse_args()
 print(args)
 k = args.k
 n = args.n
-if args.topology == 'fattree':    
-    topo = FatTreeTopo(k=k)
-if args.topology == 'bcube':
-    topo = BCubeTopo(k, n)
-if args.topology == 'generic':
-    if not args.file:
-        print('você deve informar o arquivo')
-        exit(1)
-    topo = GenericTopo(args.file)
 
-net = Mininet(topo, controller=RemoteController)
-net.start()
-print "Dumping host connections"
-dumpNodeConnections(net.hosts)
-net.pingAll()
-net.stop()
+def main():
+    if args.topology == 'fattree':    
+        topo = FatTreeTopo(k=k)
+    if args.topology == 'bcube':
+        topo = BCubeTopo(k, n)
+    if args.topology == 'generic':
+        if not args.file:
+            print('você deve informar o arquivo')
+            exit(1)
+        topo = GenericTopo(args.file)
+    net = Mininet(topo, controller=RemoteController, autoSetMacs=True)
+    net.start()
+    print "Dumping host connections"
+    dumpNodeConnections(net.hosts)
+    # net.pingAll()
+    CLI(net)
+    net.stop()
+
+if __name__ == "__main__":
+    main()
 
 __author__ = 'Andrei Bastos'
 __email__ = 'andreibastos@outlook.com'
