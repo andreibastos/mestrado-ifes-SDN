@@ -13,56 +13,54 @@ from ryu.controller.handler import MAIN_DISPATCHER,set_ev_cls,CONFIG_DISPATCHER
 from ryu.ofproto import ofproto_v1_3
 from ryu.topology import event as evt
 from ryu.lib.packet import packet, ethernet
-from ryu.lib import dpid as dpid_lib
-import networkx as nx
-from ryu.controller import dpset
-from ryu.topology.api import get_switch, get_link
 
-class Switch(app_manager.RyuApp):
+import networkx as nx
+import matplotlib.pyplot as plt
+
+import pickle
+
+# arquivo pickle
+file_path_pickle = 'topo.pkl'
+class Controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     mac_to_port = dict()
-    _CONTEXTS = {
-        'dpset': dpset.DPSet
-    }
-    nodes_pairs = list()
-    switches = dict()
-    G = nx.Graph()
 
     def __init__(self, *args, **kwargs):
-        super(Switch, self).__init__(*args, **kwargs)
-        self.dpset = kwargs['dpset']
+        super(Controller, self).__init__(*args, **kwargs)
+
+        try:
+            with open(file_path_pickle, 'rb') as f:
+                self.graph = pickle.load(f)
+            self.g = nx.Graph()
+            self.g.add_nodes_from(self.graph['switches'])
+            self.g.add_nodes_from(self.graph['hosts'])
+            self.g.add_edges_from(self.graph['links'])
+            
+            nx.draw(self.g, with_labels=True, font_weight='bold')
+            plt.show()
+            self.logger.info("%s", self.g)
+            
+        except Exception as error:
+            self.logger.error('%s', error)
+            self.logger.info('você deve iniciar o controlador depois de iniciar o main.py, para gerar a topologia')
+
     
     ## eventos de conexões do switch
     @set_ev_cls(EventDP, CONFIG_DISPATCHER)
     def _event_switch_enter_handler(self, event):
         dpid = event.dp.id
-        self.switches.setdefault(dpid, {'dp': event.dp, dpid: dpid, 'ports': len(event.ports)})
         self.mac_to_port.setdefault(dpid, dict())
         ports = event.ports # obtem as portas do switch
-        self.links = get_link(self)
-
 
         if (event.enter): # verifica se o estado é conectado
             self.logger.info('\nswitch %s connected with %s ports', dpid, str(len(ports)-1)+" ports: " + ", ".join([p.name for p in ports]))
         else:
-            if dpid in self.switches:
-                self.switches.remove(dpid)
             self.mac_to_port[dpid].clear()
             self.logger.info('switch %s disconnected', dpid) # caso seja um evento de disconectado
-            print(self.links)
             
-        self.G.clear()
-        self.G.add_nodes_from(self.switches.keys())
-
-        for link in self.links:
-            edge = (link.src.dpid,link.dst.dpid)
-            self.G.add_edge(*edge)
-        print self.G.edges, self.G.nodes
-    
     ## eventos de pacotes recebidos
     @set_ev_cls(EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, event):
-        # raw_input()
         msg = event.msg # obtem a mensagem
         in_port = msg.match['in_port'] # verifica a porta de quem está enviando a mensagem
         datapath = msg.datapath # obtem informação do switch
@@ -79,33 +77,27 @@ class Switch(app_manager.RyuApp):
 
         self.mac_to_port[dpid][src] = in_port # coloca no dicionário, a porta física de origem
         
-        if dst is 'ff:ff:ff:ff:ff':
-            out_port = ofproto.OFPP_FLOOD # a porta de saida será um FLOOD
-            pass
-        else:
-            out_port = self.mac_to_port[dpid].get(dst) # verifica se existe a porta física do mac de destino
-        
-        self.logger.info('switch %s: from in_port=%s:%s to out_port=%s:%s', dpid, in_port, src, 'FLOOD' if not out_port else out_port, dst) # exibe informações do switch e da porta
-        
-        if not out_port: # caso não tenha,
-            out_port = ofproto.OFPP_FLOOD # a porta de saida será um FLOOD
+        out_port = self.mac_to_port[dpid].get(dst) # verifica se existe a porta física do mac de destino
 
-        actions = [ofproto_parser.OFPActionOutput(out_port)] # cria uma ação com portA de saida
+        if not out_port or dst is 'ff:ff:ff:ff:ff':
+            out_port = ofproto.OFPP_FLOOD # a porta de saida será um FLOOD
+        
+        self.logger.info('switch %s: from in_port=%s:%s to out_port=%s:%s', dpid, in_port, src, out_port, dst) # exibe informações do switch e da porta
+        
+        actions = [ofproto_parser.OFPActionOutput(out_port)] # cria uma ação com porta de saida
         
         ## essa parte adiciona uma modificação na tabela de encaminhamento para evitar que pacotes vão até o controlador, reduz o tempo 
-        if out_port != ofproto.OFPP_FLOOD: # se for uma porta conhecida, 
+        if out_port != ofproto.OFPP_FLOOD: # se for uma porta conhecida,
             match = ofproto_parser.OFPMatch(in_port=in_port, eth_dst=dst) # cria a busca
-            inst = [ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)] # adiciona uma instrução de aplicar ação, que noaso será a saida para aquela porta fisica
-            mod = ofproto_parser.OFPFlowMod(datapath=datapath, buffer_id=msg.buffer_id, priority=1, match=match, instructions=inst) # cria uma modificação na tabela de encaminhamento
-            datapath.send_msg(mod) # envia ao swich
-        
-        # para aquele pacote que acabou de chegar, encaminha ele para o destino correto (flood ou porta física)
-        out = ofproto_parser.OFPPacketOut(
-            datapath=datapath, # switch
-            buffer_id=msg.buffer_id, # identificador do buffer 
-            in_port=in_port, # porta de entrada (para não enviar para ela mesma)
-            actions=actions) # ação de flood
-        datapath.send_msg(out) # envia para o switch
+            self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+        else:
+            # para aquele pacote que acabou de chegar, encaminha ele para o destino correto (flood ou porta física)
+            out = ofproto_parser.OFPPacketOut(
+                datapath=datapath, # switch
+                buffer_id=msg.buffer_id, # identificador do buffer 
+                in_port=in_port, # porta de entrada (para não enviar para ela mesma)
+                actions=actions) # ação de flood
+            datapath.send_msg(out) # envia para o switch
     
 
     ## funcionalidade para evitar bugs do switch virtual, adicionando tabela de encaminhamento vazias
@@ -116,7 +108,6 @@ class Switch(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,actions)]
         self.add_flow(datapath,0,match, actions)
     
     # adicionado um fluxo em um switch
