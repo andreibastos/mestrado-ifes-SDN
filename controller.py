@@ -35,13 +35,22 @@ class Controller(app_manager.RyuApp):
                 self.graph = pickle.load(f)
             self.g = nx.Graph()
             self.g.add_nodes_from(self.graph['switches'])
-            self.g.add_nodes_from(self.graph['hosts'])
+            self.g.add_nodes_from(self.graph['hosts'], color='blue')
             self.g.add_edges_from(self.graph['links'])
             self.logger.info('%s', self.graph)
 
-            # nx.draw(self.g, with_labels=True, font_weight='bold')
-            # plt.show()
-            # self.logger.info("%s", self.g)
+            colors = []
+            for node in self.g:
+                self
+                if node.startswith('h'):
+                    colors.append('blue')
+                else:
+                    colors.append('red')
+                    
+
+            nx.draw(self.g, node_color=colors, with_labels=True, font_weight='bold')
+            plt.savefig("topo.png")
+            self.logger.info("%s", self.g.adj)
 
         except Exception as error:
             self.logger.error('%s', error)
