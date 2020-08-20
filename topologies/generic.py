@@ -19,11 +19,12 @@ class GenericTopo(Topo):
         for edge in self.edges:
             switches = []
             for node in edge:
-                switch = 's%s'%(node)
+                id = node+1
+                switch = 's%s'%(id)
                 switches.append(switch)
                 if not switch in self.switches():
                     self.addSwitch(switch)
-                    host = self.addHost('h%s'%(node))
+                    host = self.addHost('h%s'%(id))
                     self.addLink(host, switch)
             self.addLink(switches[0],switches[1])
 
