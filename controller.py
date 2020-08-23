@@ -105,7 +105,7 @@ class Controller(app_manager.RyuApp):
 
             # self.logger.info('%s => %s', src_host, dst_host)
 
-            path = self.find_route(switch_in, switch_out, 'OSPF')
+            path = self.find_route(switch_in, switch_out, 'ECMP')
             # self.logger.info('path=%s', path)
 
             self.install_path(path, msg, src_host, dst_host)
@@ -152,7 +152,13 @@ class Controller(app_manager.RyuApp):
 
         for index, switch in enumerate(path):
             datapath = self.switches_datapath[switch]
-            if index == 0:
+
+            if size_path == 1:
+                in_port = msg.match['in_port']
+                out_port = self.get_port_between_nodes(switch, dst_host)
+                self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
+                                 index, switch, switch, in_port, dst_host, out_port)
+            elif index == 0:
                 in_port = msg.match['in_port']
                 next_switch = path[index+1]
                 out_port = self.get_port_between_nodes(switch, next_switch)
@@ -180,7 +186,6 @@ class Controller(app_manager.RyuApp):
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
-                # return
             else:
                 self.add_flow(datapath, 1, match, actions)
 
