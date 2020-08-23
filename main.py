@@ -10,6 +10,7 @@ import pickle
 import argparse
 import subprocess
 import os
+from time import sleep
 
 
 # importações do Ryu
@@ -57,18 +58,6 @@ def main():
             exit(1)
         topo = GenericTopo(args.file)
 
-    # atribuição de macs para os hosts
-    count_host = 1
-    for host in topo.nodes():
-        if not topo.isSwitch(host):
-            mac = str(hex(count_host).split('x')[-1]).upper()
-            mac = "00:00:00:00:00:{}".format(
-                mac if len(mac) > 1 else '0'+str(mac))
-            ip = "10.0.0.{}".format(count_host)
-            topo.setNodeInfo(host, {"ip": ip, "mac": mac})
-
-        count_host += 1
-
     # # atribuição dos id dos switches
     switch_count = 1
     for switch in topo.switches():
@@ -77,46 +66,55 @@ def main():
         topo.setNodeInfo(switch, info)
         switch_count += 1
 
-    # guarda a topologia para que o controlador possa ler
-    with open(file_path_pickle, 'wb') as f:
-        graph = dict()
-        graph['hosts'] = topo.hosts()
-        graph['switches'] = topo.switches()
-        graph['links'] = topo.links(sort=True)
-        graph['ip_host'] = {topo
-                            .nodeInfo(host)['ip']: host for host in topo.hosts()}
-        graph['host_mac'] = {host: topo
-                             .nodeInfo(host)['mac'] for host in topo.hosts()}
-        pickle.dump(graph, f)
-
-    # inicia o controlador
-    process_controller = subprocess.Popen(
-        'bash init_controller.sh'.split(), stdout=subprocess.PIPE)
-
     # limpa mininet anterior
-    clean_mininet = subprocess.Popen('mn -c'.split())
+    clean_mininet = subprocess.Popen('mn -c -v error'.split())
     clean_mininet.wait()
 
     # iniciando mininet
-    net = Mininet(topo, controller=RemoteController)
+    net = Mininet(topo, controller=RemoteController, autoSetMacs=True)
 
+    node_ports = dict()
+    for link in net.links:
+        node_1, port_1 = link.intf1.name.split('-eth')
+        node_2, port_2 = link.intf2.name.split('-eth')
+
+        node_ports.setdefault(node_1, dict())
+        node_ports[node_1][node_2] = int(port_1)
+        node_ports.setdefault(node_2, dict())
+        node_ports[node_2][node_1] = int(port_2)
+
+    # guarda a topologia para que o controlador possa ler
+    with open(file_path_pickle, 'wb') as f:
+        graph = dict()
+        graph['hosts'] = [h.name for h in net.hosts]
+        graph['switches'] = [s.name for s in net.switches]
+        graph['node_ports'] = node_ports
+        graph['links'] = topo.links(sort=True)
+        graph['ip_host'] = {host.IP(): host.name for host in net.hosts}
+        graph['host_mac'] = {host.name: host.MAC() for host in net.hosts}
+        pickle.dump(graph, f)
+
+    # # inicia o controlador
+    process_controller = subprocess.Popen(
+        'bash init_controller.sh'.split(), stdout=subprocess.PIPE)
+    sleep(5)
     net.start()
 
-    s1 = net.switches[0]
-    print s1.MAC()
-    
-    # net.pingPair()
-    # net.pingPairFull()
-    net.pingAll(timeout=1)
-    # CLI(net)
+    # # net.pingPair()
+    # # net.pingPairFull()
+    net.pingAll(timeout=2)
+    # h1, h2 = net.hosts[0], net.hosts[1]
+    # print 'ping from: {} to {}'.format(h1.MAC(), h2.MAC())
+    # print h1.cmd('ping -c4 %s' % h2.IP())
+    CLI(net)
     net.stop()
 
     # finaliza o controlador
     process_controller.kill()
     process_controller.wait()
     # apaga o arquivo da topologia
-    if os.path.exists("topo.picle"):
-        os.remove("topo.picle")
+    if os.path.exists(file_path_pickle):
+        os.remove(file_path_pickle)
 
 
 if __name__ == "__main__":
