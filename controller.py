@@ -145,7 +145,7 @@ class Controller(app_manager.RyuApp):
 
     def install_path(self, path, msg, src_host, dst_host):
         size_path = len(path)  # número de switches do caminho
-        self.logger.info(path)
+        # self.logger.info('instalando path %s',path)
 
         src_mac = self.graph['host_mac'][src_host]
         dst_mac = self.graph['host_mac'][dst_host]
@@ -156,28 +156,28 @@ class Controller(app_manager.RyuApp):
             if size_path == 1:
                 in_port = msg.match['in_port']
                 out_port = self.get_port_between_nodes(switch, dst_host)
-                self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
-                                 index, switch, switch, in_port, dst_host, out_port)
+                # self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
+                #                  index, switch, switch, in_port, dst_host, out_port)
             elif index == 0:
                 in_port = msg.match['in_port']
                 next_switch = path[index+1]
                 out_port = self.get_port_between_nodes(switch, next_switch)
-                self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
-                                 index, switch, src_host, in_port, next_switch, out_port)
+                # self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
+                #                  index, switch, src_host, in_port, next_switch, out_port)
             elif index < size_path - 1:
                 previous_switch = path[index-1]
                 next_switch = path[index+1]
                 in_port = self.get_port_between_nodes(switch, previous_switch)
                 out_port = self.get_port_between_nodes(switch, next_switch)
-                self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
-                                 index, switch, previous_switch, in_port, next_switch, out_port)
+                # self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
+                #                  index, switch, previous_switch, in_port, next_switch, out_port)
 
             else:
                 previous_switch = path[index-1]
                 in_port = self.get_port_between_nodes(switch, previous_switch)
                 out_port = self.get_port_between_nodes(switch, dst_host)
-                self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
-                                 index, switch, previous_switch, in_port, dst_host, out_port)
+                # self.logger.info('index: (%s), switch: %s:\t from: %s (in_port: %s) to: %s (out_port:%s)',
+                #                  index, switch, previous_switch, in_port, dst_host, out_port)
 
             ofproto = datapath.ofproto  # obtem o protocolo daquele switch
             parser = datapath.ofproto_parser  # obtem o parser
@@ -196,8 +196,6 @@ class Controller(app_manager.RyuApp):
             out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                       in_port=in_port, actions=actions, data=data)
             datapath.send_msg(out)
-
-        self.logger.info('\n')
 
     def find_route(self, switch_in, switch_out, method):
         path = []
