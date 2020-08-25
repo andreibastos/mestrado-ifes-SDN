@@ -46,7 +46,6 @@ class FatTreeTopo(Topo):
             for host in hosts:
                 self.addHost(host)
                 self.addLink(switch, host)
-        print '\n'
         return pod
 
     def core(self):
