@@ -9,6 +9,7 @@ Esse é o arquivo principal que dá inicio a todo processo
 import pickle
 import argparse
 import subprocess
+from multiprocessing import Process
 import os
 from time import sleep
 
@@ -97,16 +98,34 @@ def main():
     # # inicia o controlador
     process_controller = subprocess.Popen(
         'bash init_controller.sh'.split(), stdout=subprocess.PIPE)
-    sleep(5)
-    net.start()
 
-    # # net.pingPair()
-    # # net.pingPairFull()
-    net.pingAll(timeout=2)
-    # h1, h2 = net.hosts[0], net.hosts[1]
-    # print 'ping from: {} to {}'.format(h1.MAC(), h2.MAC())
-    # print h1.cmd('ping -c4 %s' % h2.IP())
-    CLI(net)
+    # inicia o minenet
+    net.start()
+    sleep(0.15*len(topo.switches()))
+
+    # pinga toda rede
+    net.pingAll(timeout=1)
+
+    # Chamada da função de monitoramento de pacotes de rede
+    monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1.0))
+    monitor_cpu.start()
+
+    # Inicia o teste de comunicação de todos para todos
+    port = 5001
+    data_size = 5000000
+    for h in net.hosts:
+        h.cmd('iperf -s -p %s > /dev/null &' % port)
+    for client in net.hosts:
+        for server in net.hosts:
+            if client != server:
+                client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
+                           (server.IP(), port, data_size))
+    wait_time = 1*len(topo.nodes())
+    print('Please %s wait until the experiment is complete...' % wait_time)
+    sleep(wait_time)
+    os.system("killall -9 iperf")
+    os.system("killall -9 bwm-ng")
+    monitor_cpu.terminate()
     net.stop()
 
     # finaliza o controlador
@@ -115,6 +134,13 @@ def main():
     # apaga o arquivo da topologia
     if os.path.exists(file_path_pickle):
         os.remove(file_path_pickle)
+
+
+# Definição da função de monitoramento de pacotes de rede
+def monitor_bwm_ng(fname, interval_sec):
+    cmd = ("sleep 1; bwm-ng -t %s -o csv -u bits -T rate -C ',' > %s" %
+           (interval_sec * 1000, fname))
+    subprocess.Popen(cmd, shell=True).wait()
 
 
 if __name__ == "__main__":
