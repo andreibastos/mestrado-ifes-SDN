@@ -94,14 +94,15 @@ def main():
         graph['ip_host'] = {host.IP(): host.name for host in net.hosts}
         graph['host_mac'] = {host.name: host.MAC() for host in net.hosts}
         pickle.dump(graph, f)
-
+    
     # # inicia o controlador
+    method = 'ECMP'
     process_controller = subprocess.Popen(
-        'bash init_controller.sh'.split(), stdout=subprocess.PIPE)
+        ('bash init_controller.sh method %s' % method).split(), stdout=subprocess.PIPE)
 
     # inicia o minenet
     net.start()
-    sleep(0.15*len(topo.switches()))
+    sleep(0.5*len(topo.switches()))
 
     # pinga toda rede
     net.pingAll(timeout=1)

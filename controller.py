@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 import pickle
 import re
+import os
 
 # arquivo pickle
 file_path_pickle = 'topo.pkl'
@@ -31,6 +32,8 @@ class Controller(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(Controller, self).__init__(*args, **kwargs)
         self.logger.info('iniciando controlador..')
+        self.method = os.environ.get('METHOD', 'OSPF')
+        self.logger.info(self.method)
 
         try:
             with open(file_path_pickle, 'rb') as f:
@@ -105,7 +108,7 @@ class Controller(app_manager.RyuApp):
 
             # self.logger.info('%s => %s', src_host, dst_host)
 
-            path = self.find_route(switch_in, switch_out, 'ECMP')
+            path = self.find_route(switch_in, switch_out, self.method)
             # self.logger.info('path=%s', path)
 
             self.install_path(path, msg, src_host, dst_host)
@@ -199,9 +202,9 @@ class Controller(app_manager.RyuApp):
 
     def find_route(self, switch_in, switch_out, method):
         path = []
-        if method is 'OSPF':
+        if method == 'OSPF':
             path = nx.shortest_path(self.g, switch_in, switch_out)
-        elif method is 'ECMP':
+        elif method == 'ECMP':
             paths = [path
                      for path in nx.all_shortest_paths(self.g, switch_in, switch_out)]
             path = self.get_route_ecmp(switch_in, switch_out, paths)
