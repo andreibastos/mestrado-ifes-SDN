@@ -36,10 +36,14 @@ parser.add_argument(
     "-f", "--file", help="Arquivo de entrada quando topologia é generic")
 parser.add_argument("-n", help="número de portas do switch",
                     type=int, default=4)
+parser.add_argument("-m", "--method", help="método de roteamento",
+                    dest="method", type=str, choices=['ECMP', 'OSPF'], default='ECMP')
+
 args = parser.parse_args()
 print(args)
 k = args.k
 n = args.n
+method = args.method
 
 # arquivo pickle
 file_path_pickle = 'topo.pkl'
@@ -103,7 +107,6 @@ def main():
         pickle.dump(graph, f)
 
     # inicia o controlador
-    method = 'ECMP'
     process_controller = subprocess.Popen(
         ('bash init_controller.sh method %s' % method).split(), stdout=subprocess.PIPE)
 
@@ -122,10 +125,11 @@ def main():
 
     # Chamada da função de monitoramento de pacotes de rede
     print('\niniciando monitor de tráfego...')
-    monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1.0))
+    monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1))
     monitor_cpu.start()
 
     # Inicia o teste de comunicação de todos para todos
+    print('\niniciando teste de comunicação todos para todos')
     port = 5001
     data_size = 5000000
     for h in net.hosts:
@@ -137,7 +141,7 @@ def main():
                 client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
                            (server.IP(), port, data_size))
 
-    wait_time = 1*len(topo.nodes())  # 1 segundo para cada node
+    wait_time = 0.5*len(topo.nodes())  # 1 segundo para cada node
     print('\nrealizando experimento durante %s segundos' % wait_time)
     sleep(wait_time)
 
@@ -163,7 +167,7 @@ def main():
 
 
 def monitor_bwm_ng(fname, interval_sec):
-    cmd = ("sleep 1; bwm-ng -t %s -o csv -u bits -T rate -C ',' > %s" %
+    cmd = ("sleep 1; bwm-ng -t %s -o csv -u bits -T rate -C ',' | grep total > %s" %
            (interval_sec * 1000, fname))
     subprocess.Popen(cmd, shell=True).wait()
 
