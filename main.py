@@ -44,10 +44,10 @@ n = args.n
 # arquivo pickle
 file_path_pickle = 'topo.pkl'
 
-# função principal
-
 
 def main():
+    # função principal
+
     # cria as topologias de acordo com os argumentos
     if args.topology == 'fattree':
         topo = FatTreeTopo(k=k)
@@ -59,7 +59,7 @@ def main():
             exit(1)
         topo = GenericTopo(args.file)
 
-    # # atribuição dos id dos switches
+    # atribuição dos id dos switches
     switch_count = 1
     for switch in topo.switches():
         info = topo.nodeInfo(switch)
@@ -68,23 +68,30 @@ def main():
         switch_count += 1
 
     # limpa mininet anterior
+    print('\nlimpando a mininet anterior...')
     clean_mininet = subprocess.Popen('mn -c -v error'.split())
     clean_mininet.wait()
 
     # iniciando mininet
+    print('\niniciando mininet atual...')
     net = Mininet(topo, controller=RemoteController, autoSetMacs=True)
 
+    # mapeamento de nodes e portas
+    print('\nmapeamento de portas dos nodes...')
     node_ports = dict()
-    for link in net.links:
+    for link in net.links:  # para cada link
+        # obtem o nós conectados e a porta
         node_1, port_1 = link.intf1.name.split('-eth')
         node_2, port_2 = link.intf2.name.split('-eth')
 
+        # adiciona o node e a porta
         node_ports.setdefault(node_1, dict())
         node_ports[node_1][node_2] = int(port_1)
         node_ports.setdefault(node_2, dict())
         node_ports[node_2][node_1] = int(port_2)
 
-    # guarda a topologia para que o controlador possa ler
+    # salva a topologia para que o controlador possa ler
+    print('\nsalvando topologia em arquivo...')
     with open(file_path_pickle, 'wb') as f:
         graph = dict()
         graph['hosts'] = [h.name for h in net.hosts]
@@ -94,20 +101,27 @@ def main():
         graph['ip_host'] = {host.IP(): host.name for host in net.hosts}
         graph['host_mac'] = {host.name: host.MAC() for host in net.hosts}
         pickle.dump(graph, f)
-    
-    # # inicia o controlador
+
+    # inicia o controlador
     method = 'ECMP'
     process_controller = subprocess.Popen(
         ('bash init_controller.sh method %s' % method).split(), stdout=subprocess.PIPE)
 
     # inicia o minenet
+    print('\ninicio do mininet...')
     net.start()
-    sleep(0.5*len(topo.switches()))
+
+    # aguarda 500 ms para cada switch conectar no controlador, evita condição de corrida
+    wait_time = 0.5*len(topo.switches())
+    print('\naguardando %s segundos para que todos os switches se conectem...' % wait_time)
+    sleep(wait_time)
 
     # pinga toda rede
+    print('\nping de todos os hosts...')
     net.pingAll(timeout=1)
 
     # Chamada da função de monitoramento de pacotes de rede
+    print('\niniciando monitor de tráfego...')
     monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1.0))
     monitor_cpu.start()
 
@@ -115,29 +129,39 @@ def main():
     port = 5001
     data_size = 5000000
     for h in net.hosts:
+        # inicia o serviço de iperf em cada host
         h.cmd('iperf -s -p %s > /dev/null &' % port)
     for client in net.hosts:
         for server in net.hosts:
-            if client != server:
+            if client != server:  # se n for de host para ele mesmo
                 client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
                            (server.IP(), port, data_size))
-    wait_time = 1*len(topo.nodes())
-    print('Please %s wait until the experiment is complete...' % wait_time)
+
+    wait_time = 1*len(topo.nodes())  # 1 segundo para cada node
+    print('\nrealizando experimento durante %s segundos' % wait_time)
     sleep(wait_time)
+
+    print('\nfinalizando processo de monitor de tráfego...')
     os.system("killall -9 iperf")
     os.system("killall -9 bwm-ng")
     monitor_cpu.terminate()
+
+    print('\nfinalizando mininet...')
     net.stop()
 
     # finaliza o controlador
+    print('\nfinalizando controlador...')
     process_controller.kill()
     process_controller.wait()
+
     # apaga o arquivo da topologia
+    print('\napagando dados da topologia...')
     if os.path.exists(file_path_pickle):
         os.remove(file_path_pickle)
 
-
 # Definição da função de monitoramento de pacotes de rede
+
+
 def monitor_bwm_ng(fname, interval_sec):
     cmd = ("sleep 1; bwm-ng -t %s -o csv -u bits -T rate -C ',' > %s" %
            (interval_sec * 1000, fname))
