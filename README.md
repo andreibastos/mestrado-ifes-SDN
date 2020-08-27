@@ -58,3 +58,8 @@ sudo python main.py -t fattree -k 4
 # genérica
 sudo python main.py -t generic -f topologies/topo1.txt 
 ```
+
+## Executar Teste Completo
+```bash
+./full_test 
+```
