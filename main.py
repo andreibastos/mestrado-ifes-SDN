@@ -51,6 +51,7 @@ file_path_pickle = 'topo.pkl'
 
 def main():
     # função principal
+    print ("\n### INICIANDO NOVO TESTE ###")
 
     # cria as topologias de acordo com os argumentos
     if args.topology == 'fattree':
@@ -115,7 +116,7 @@ def main():
     net.start()
 
     # aguarda 500 ms para cada switch conectar no controlador, evita condição de corrida
-    wait_time = 0.5*len(topo.switches())
+    wait_time = 0.4*len(topo.switches())
     print('\naguardando %s segundos para que todos os switches se conectem...' % wait_time)
     sleep(wait_time)
 
