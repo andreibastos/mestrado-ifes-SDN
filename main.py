@@ -115,8 +115,8 @@ def main():
     print('\ninicio do mininet...')
     net.start()
 
-    # aguarda 500 ms para cada switch conectar no controlador, evita condição de corrida
-    wait_time = 0.4*len(topo.switches())
+    # aguarda 800 ms para cada switch conectar no controlador, evita condição de corrida
+    wait_time = 0.8*len(topo.switches())
     print('\naguardando %s segundos para que todos os switches se conectem...' % wait_time)
     sleep(wait_time)
 
@@ -128,11 +128,13 @@ def main():
     print('\niniciando monitor de tráfego...')
     monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1))
     monitor_cpu.start()
+    monitor_cpu.join()
 
     # Inicia o teste de comunicação de todos para todos
-    print('\niniciando teste de comunicação todos para todos')
     port = 5001
-    data_size = 25000000
+    MB = 8*(1 << 20)
+    data_size = 10 * MB
+    print('\nteste de comunicação todos para todos com %s MBytes' % (data_size/MB))
     for h in net.hosts:
         # inicia o serviço de iperf em cada host
         h.cmd('iperf -s -p %s > /dev/null &' % port)
@@ -142,8 +144,9 @@ def main():
                 client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
                            (server.IP(), port, data_size))
 
-    wait_time = 1*len(topo.nodes())  # 1 segundo para cada node
-    print('\nrealizando experimento durante %s segundos' % wait_time)
+    # 500 ms para cada node + 900 ms para cada MB
+    wait_time = 0.5*len(topo.nodes()) + 0.9*data_size/(MB)
+    print('\naguardando experimento por mais %s segundos' % wait_time)
     sleep(wait_time)
 
     print('\nfinalizando processo de monitor de tráfego...')
