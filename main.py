@@ -40,7 +40,6 @@ parser.add_argument("-m", "--method", help="método de roteamento",
                     dest="method", type=str, choices=['ECMP', 'OSPF'], default='ECMP')
 
 args = parser.parse_args()
-print(args)
 k = args.k
 n = args.n
 method = args.method
@@ -51,7 +50,8 @@ file_path_pickle = 'topo.pkl'
 
 def main():
     # função principal
-    print ("\n### INICIANDO NOVO TESTE ###")
+    print ("\n### INICIANDO NOVO TESTE com Topologia: %s e Método: %s ###" %
+           (args.topology, method))
 
     # cria as topologias de acordo com os argumentos
     if args.topology == 'fattree':
@@ -132,7 +132,7 @@ def main():
     # Inicia o teste de comunicação de todos para todos
     print('\niniciando teste de comunicação todos para todos')
     port = 5001
-    data_size = 5000000
+    data_size = 25000000
     for h in net.hosts:
         # inicia o serviço de iperf em cada host
         h.cmd('iperf -s -p %s > /dev/null &' % port)
@@ -142,7 +142,7 @@ def main():
                 client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
                            (server.IP(), port, data_size))
 
-    wait_time = 0.5*len(topo.nodes())  # 1 segundo para cada node
+    wait_time = 1*len(topo.nodes())  # 1 segundo para cada node
     print('\nrealizando experimento durante %s segundos' % wait_time)
     sleep(wait_time)
 
