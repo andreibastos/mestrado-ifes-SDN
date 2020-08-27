@@ -89,6 +89,6 @@ plt.ylim((0, ymax*1.2))  # ajusta o eixo y para ficar 20% a mais que o maior y
 # aguarda a figura
 if args.output:
     plt.savefig(args.output)
-    plt.show()
+    plt.draw()
 else:
-    plt.show()
+    plt.draw()
