@@ -95,3 +95,4 @@ cat $DIR_RESULTS/topo3_OSPF.bwm >>$DIR_RESULTS/topo.bwm
 cat $DIR_RESULTS/topo3_ECMP.bwm >>$DIR_RESULTS/topo.bwm
 python plot.py -f $DIR_RESULTS/topo.bwm -o $DIR_RESULTS/topo.png
 
+rm dados.bwm
