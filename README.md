@@ -23,10 +23,10 @@ todos os passos abaixo é considerando ambiente virtual ativo
 
 ## Gerando redes genéricas
 ```bash
-python topologies/generate_generic.py -o topologies/topo3.txt --switches 6 -v
+python generate_generic.py -o topo3.txt --switches 6 --links 10 -v
 ``` 
 ```shell 
-python topologies/generate_generic.py -h
+python generate_generic.py -h
 # output
 usage: generate_generic.py [-h] [-s S] [-l L] [-o OUTPUT] [-v]
 
@@ -56,7 +56,7 @@ sudo python main.py -t fattree -k 4
 ```
 ```bash
 # genérica
-sudo python main.py -t generic -f topologies/topo1.txt 
+sudo python main.py -t generic -f topo1.txt 
 ```
 
 ## Executar Teste Completo

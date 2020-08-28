@@ -1,5 +1,7 @@
 #!./venv/bin python
 # -*- coding: utf-8 -*-
+## Andrei Bastos
+## Mestrado IFES 2020 - Computação Aplicada - Redes de Computadores - SDN
 
 """
 Esse é o arquivo principal que dá inicio a todo processo
@@ -13,11 +15,8 @@ from multiprocessing import Process
 import os
 from time import sleep
 
-
-# importações do Ryu
-from topologies.fattree import FatTreeTopo
-from topologies.bcube import BCubeTopo
-from topologies.generic import GenericTopo
+# importações das Topologias
+from topology import FatTreeTopo, BCubeTopo, GenericTopo
 
 # importações do mininet
 from mininet.net import Mininet
@@ -39,17 +38,17 @@ parser.add_argument("-n", help="número de portas do switch",
 parser.add_argument("-m", "--method", help="método de roteamento",
                     dest="method", type=str, choices=['ECMP', 'OSPF'], default='ECMP')
 
+# processa os argumentos
 args = parser.parse_args()
 k = args.k
 n = args.n
 method = args.method
 
 # arquivo pickle
-file_path_pickle = 'topo.pkl'
+filepath_pickle = 'topo.pkl'
 
-
+# função principal
 def main():
-    # função principal
     print ("\n### INICIANDO NOVO TESTE com Topologia: %s e Método: %s ###" %
            (args.topology, method))
 
@@ -97,7 +96,7 @@ def main():
 
     # salva a topologia para que o controlador possa ler
     print('\nsalvando topologia em arquivo...')
-    with open(file_path_pickle, 'wb') as f:
+    with open(filepath_pickle, 'wb') as f:
         graph = dict()
         graph['hosts'] = [h.name for h in net.hosts]
         graph['switches'] = [s.name for s in net.switches]
@@ -115,8 +114,8 @@ def main():
     print('\ninicio do mininet...')
     net.start()
 
-    # aguarda 800 ms para cada switch conectar no controlador, evita condição de corrida
-    wait_time = 0.8*len(topo.switches())
+    # aguarda 500 ms para cada switch conectar no controlador, evita condição de corrida
+    wait_time = 0.5*len(topo.switches())
     print('\naguardando %s segundos para que todos os switches se conectem...' % wait_time)
     sleep(wait_time)
 
@@ -128,12 +127,11 @@ def main():
     print('\niniciando monitor de tráfego...')
     monitor_cpu = Process(target=monitor_bwm_ng, args=('dados.bwm', 1))
     monitor_cpu.start()
-    monitor_cpu.join()
 
     # Inicia o teste de comunicação de todos para todos
     port = 5001
     MB = 8*(1 << 20)
-    data_size = 10 * MB
+    data_size = 20 * MB
     print('\nteste de comunicação todos para todos com %s MBytes' % (data_size/MB))
     for h in net.hosts:
         # inicia o serviço de iperf em cada host
@@ -144,16 +142,18 @@ def main():
                 client.cmd('iperf -c %s -p %s -n %d -i 1 -yc > /dev/null &' %
                            (server.IP(), port, data_size))
 
-    # 500 ms para cada node + 900 ms para cada MB
-    wait_time = 0.5*len(topo.nodes()) + 0.9*data_size/(MB)
+    # 500 ms para cada node + 1000 ms para cada MB
+    wait_time = 0.5*len(topo.nodes()) + 1*data_size/(MB)
     print('\naguardando experimento por mais %s segundos' % wait_time)
     sleep(wait_time)
 
+    # finaliza o monitor de tráfego
     print('\nfinalizando processo de monitor de tráfego...')
     os.system("killall -9 iperf")
     os.system("killall -9 bwm-ng")
     monitor_cpu.terminate()
 
+    # finaliza o mininet
     print('\nfinalizando mininet...')
     net.stop()
 
@@ -164,12 +164,10 @@ def main():
 
     # apaga o arquivo da topologia
     print('\napagando dados da topologia...')
-    if os.path.exists(file_path_pickle):
-        os.remove(file_path_pickle)
+    if os.path.exists(filepath_pickle):
+        os.remove(filepath_pickle)
 
 # Definição da função de monitoramento de pacotes de rede
-
-
 def monitor_bwm_ng(fname, interval_sec):
     cmd = ("sleep 1; bwm-ng -t %s -o csv -u bits -T rate -C ',' | grep total > %s" %
            (interval_sec * 1000, fname))
