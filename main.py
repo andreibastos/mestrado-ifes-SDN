@@ -73,7 +73,7 @@ def main():
 
     # limpa mininet anterior
     print('\nlimpando a mininet anterior...')
-    clean_mininet = subprocess.Popen('mn -c -v error'.split())
+    clean_mininet = subprocess.Popen('mn -c -v output'.split())
     clean_mininet.wait()
 
     # iniciando mininet
