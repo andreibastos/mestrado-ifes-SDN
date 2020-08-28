@@ -237,4 +237,4 @@ class Controller(app_manager.RyuApp):
 def generate_hash(switch_in, switch_out):
     # função hash para obter um caminho
     return int(re.findall(
-        r'\d+', switch_in)[0]) + int(re.findall(r'\d+', switch_out)[0])
+        r'\d+', switch_in)[0] + re.findall(r'\d+', switch_out)[0])
