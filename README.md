@@ -21,6 +21,33 @@ pip install -r requeriments.txt
 
 todos os passos abaixo é considerando ambiente virtual ativo
 
+## Iniciando Controlador
+```bash
+venv/bin/ryu-manager controller.py
+```
+
+## Executando Minenet
+considerando [mininet](http://mininet.org/) instalado
+
+```bash
+# bcube
+sudo python main.py -t bcube -k 1 -n 4 --method OSPF
+```
+```bash
+# fattre
+sudo python main.py -t fattree -k 4 
+```
+```bash
+# genérica
+sudo python main.py -t generic -f topo1.txt 
+```
+
+## Executar Teste Completo
+```bash
+./full_test 
+```
+
+
 ## Gerando redes genéricas
 ```bash
 python generate_generic.py -o topo3.txt --switches 6 --links 10 -v
@@ -38,28 +65,7 @@ optional arguments:
   -v, --view      visualizar a rede
 ``` 
 
-## Iniciando Controlador
+## Executar o plot 
 ```bash
-venv/bin/ryu-manager controller.py
-```
-
-## Executando Minenet
-considerando [mininet](http://mininet.org/) instalado
-
-```bash
-# bcube
-sudo python main.py -t bcube -k 1 -n 4
-```
-```bash
-# fattre
-sudo python main.py -t fattree -k 4 
-```
-```bash
-# genérica
-sudo python main.py -t generic -f topo1.txt 
-```
-
-## Executar Teste Completo
-```bash
-./full_test 
+python plot -f dados.bwm -o dados.png
 ```
