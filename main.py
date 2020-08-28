@@ -131,7 +131,7 @@ def main():
     # Inicia o teste de comunicação de todos para todos
     port = 5001
     MB = 8*(1 << 20)
-    data_size = 20 * MB
+    data_size = 5 * MB
     print('\nteste de comunicação todos para todos com %s MBytes' % (data_size/MB))
     for h in net.hosts:
         # inicia o serviço de iperf em cada host
